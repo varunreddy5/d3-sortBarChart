@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Learning D3</title>
+	<link rel="stylesheet" href="css/main.css">
+	<script  type="text/javascript" src="js/d3.min.js"></script>
+</head>
+<body>
+
+  <script>
+    var w=800;
+    var h=550;
+    var margin={
+      top:15,
+      right:20,
+      bottom:110,
+      left:85
+    };
+    var width=w-margin.top-margin.bottom;
+    var height=h-margin.right-margin.left;
+    var data = [
+    {key: "Glazed",		value: 132},
+    {key: "Jelly",		value: 71},
+    {key: "Holes",		value: 337},
+    {key: "Sprinkles",	value: 93},
+    {key: "Crumb",		value: 78},
+    {key: "Chocolate",	value: 43},
+    {key: "Coconut", 	value: 20},
+    {key: "Cream",		value: 16},
+    {key: "Cruller", 	value: 30},
+    {key: "Éclair", 	value: 8},
+    {key: "Fritter", 	value: 17},
+    {key: "Bearclaw", 	value: 21}
+    ];
+    
+    //ordinal scale
+    var xScale=d3.scale.ordinal()
+    .domain(data.map(function(d){
+      return d.key;
+    }))
+    .rangeBands([0,width]);
+    //linear scale
+    var yScale=d3.scale.linear()
+    .domain([0,d3.max(data,function(d){return d.value;})])
+    .range([height,0])
+    .nice();
+    
+    //linearColor Scale
+    var linearColorScale=d3.scale.linear()
+    .domain([0,data.length])
+    .range(['#000000',"#FFFFFF"]);
+    //OrdinalColorScale
+    var ordinalColorScale=d3.scale.category20();
+    
+    //xAxis
+    var xAxis=d3.svg.axis()
+    .scale(xScale)
+    .orient("bottom");
+    //yAxis
+    var yAxis=d3.svg.axis()
+    .scale(yScale)
+    .orient("left");
+    //gridlines
+    var yGridLines=d3.svg.axis()
+    .scale(yScale)
+    .tickSize(-width,0,0)//default right to left so -ve
+    .tickFormat("")
+    .orient("left");
+    //svg
+    var svg=d3.select("body")
+    .append("svg")
+    .attr({
+      id:"chart",
+      width:w,
+      height:h
+    });
+    //chart
+    var chart=svg.append("g")
+    .classed("display",true)
+    .attr("transform","translate("+margin.left+","+margin.top+")");
+    //controls
+    var controls=d3.select("body")
+    .append("div")
+    .attr("id","controls");
+    //sort button html
+    var sort_button=controls.append("button")
+    .html("Sort data: ascending")
+    .attr("state",0);
+    
+    function drawAxis(params){
+      if(params.initialize===true){
+            //Draw gridlines
+            this.append("g")
+            .call(params.gridlines)
+            .classed("gridline",true)
+            .attr("transform","translate(0,0)");
+            // Draw the X Axis    
+            this.append("g")
+            .classed("x axis",true)
+            .attr({"transform":"translate(0"+","+height+")"})
+            .call(params.axis.x)
+            .selectAll("text")
+            .classed("x-axis-label",true)
+            .style("text-anchor","end")
+            .attr({
+              dx:-8,
+              dy:8,
+              transform:"translate(0,0) rotate(-45)"
+            });
+            // Draw the y Axis
+            this.append("g")
+            .classed("y axis",true)
+            .attr({"transform":"translate(0,0)"})
+            .call(params.axis.y);
+            
+            // This is the y label
+            this.select(".y.axis")
+            .append("text")
+            .style("text-anchor","middle")
+            .attr({
+              dx:0,
+              dy:-50,
+              transform:"translate(0,"+height/2+") rotate(-90)",
+              "font-weight":"bold"
+            })
+            .text("Units sold");
+            //This is the x label
+            this.select(".x.axis")
+            .append("text")
+            .style("text-anchor","middle")
+            .attr({
+              dx:0,
+              dy:80,
+              transform:"translate("+width/2+",0) rotate(0)",
+              "font-weight":"bold"
+            })
+            .text("Donut Type");
+          }
+          
+        //update the info
+        else if(params.initialize===false){
+          this.selectAll("g.x.axis")
+          .transition()
+          .duration(500)
+          .call(params.axis.x);
+          this.selectAll(".x-axis-label")
+          .style("text-anchor","end")
+          .attr({
+            dx:-8,
+            dy:8,
+            transform:"translate(0,0) rotate(-45)"
+          });
+          this.selectAll("g.y.axis")
+          .transition()
+          .duration(500)
+          .call(params.axis.y);
+        }
+      }
+      
+      function plot(params){
+        xScale.domain(data.map(function(d){
+          return d.key;
+        }));
+        yScale.domain([0,d3.max(data,function(d){return d.value;})]);
+        
+        //draw axis and axis labels
+        drawAxis.call(this,params);
+        
+        //enter() bar
+        this.selectAll(".bar")
+        .data(params.data)
+        .enter()
+        .append("rect")
+        .classed("bar",true)
+        .on("mouseover",function(d,i){
+          return d3.select(this).style("fill","purple");
+        })
+        .on("mouseout",function(d,i){
+          return d3.select(this).style("fill",ordinalColorScale(i));
+        });
+        //enter() bar label
+        this.selectAll(".bar-label")
+        .data(params.data)
+        .enter()
+        .append("text")
+        .classed("bar-label",true);
+        
+        //update bar
+        this.selectAll(".bar")
+        .transition()
+        .duration(500)
+        
+        .attr({
+          x:function(d,i){
+            return xScale(d.key);
+          },
+          y:function(d,i){
+            return yScale(d.value);
+          },
+          width:function(d,i){
+            return xScale.rangeBand();
+          },
+          height:function(d,i){
+            return height-yScale(d.value);
+          }
+        })
+        .style('fill',function(d,i){
+          return ordinalColorScale(i);
+                //return linearColorScale(i);
+              });
+        
+        // update bar label
+        this.selectAll(".bar-label")
+        .transition()
+        .duration(500)
+        .attr({
+          x:function(d,i){
+            return xScale(d.key)+(xScale.rangeBand()/2);
+          },
+          y:function(d,i){
+            return yScale(d.value);
+          },
+          dx:0,
+          dy:-6
+        })
+        .text(function(d,i){
+          return d.value;
+        });
+        
+        //exit() bar
+        this.selectAll(".bar")
+        .data(params.data)
+        .exit()
+        .remove();
+        
+        //exit() bar label
+        this.selectAll(".bar-label")
+        .data(params.data)
+        .exit()
+        .remove();
+      }
+//sort button on click
+sort_button.on("click",function(){
+  var self=d3.select(this);
+  var ascending=function(a,b){
+    return a.value-b.value;
+  }
+  var descending=function(a,b){
+    return b.value-a.value;
+  }
+  var state=+self.attr("state");
+  var txt="Sort data: ";
+  if(state==0){
+    data.sort(ascending);
+    state=1;
+    txt+="descending";
+  } else if(state==1){
+    data.sort(descending);
+    state=0;
+    txt+="ascending";
+  }
+  self.attr("state",state);
+  self.html(txt);
+  plot.call(chart,{
+    data:data,
+    axis:{
+      x:xAxis,
+      y:yAxis
+    },
+    gridlines:yGridLines,
+    initialize:false
+  });
+});
+
+//plot function call
+plot.call(chart,{
+  data:data,
+  axis:{
+    x:xAxis,
+    y:yAxis
+  },
+  gridlines:yGridLines,
+  initialize:true
+});
+
+
+</script>	
+</body>
+</html>
